@@ -1,5 +1,8 @@
 import java.util.ArrayList;
 import java.awt.Point;
+import java.net.Socket;
+import java.io.*;
+import org.json.simple.JSONObject;
 
 public abstract class Game {
  
@@ -16,6 +19,17 @@ public abstract class Game {
     public int timeSinceLastMove;
     public Hunter hunter;
     public Prey prey;
+
+    public Socket publisherSocket;
+    public Socket playerSocket;
+    
+    public PrintWriter publisherOut = null;
+    public PrintWriter playerOut = null;
+
+    public BufferedReader publisherIn = null;
+    public BufferedReader playerIn = null;
+
+    JSONParser parser = new JSONParser();
 
     public final int BOARD_SIZE = 301;
 
@@ -38,6 +52,47 @@ public abstract class Game {
 
         grid[0][0] = -2;
         grid[230][200] = -3;
+    }
+
+    public boolean connectToSockets(int port) throws Exception {
+        connectToPublisherSocket();
+        connectToPlayerSocket(port);
+    }
+
+    public boolean connectToPublisherSocket() throws Exception{
+        try {
+            publisherSocket = new Socket("localhost", 1990);
+        }
+        catch (Exception e) {
+            System.out.println("Error connecting to Publisher Socket: " + e);
+            return false;
+        }
+
+        try {
+            publisherOut = new PrintWriter(publisherSocket.getOutputStream(), true);
+            publisherIn = new BufferedReader(new InputStreamReader(publisherSocket.getInputStream()));
+        } catch (IOException eIO) {
+            System.out.println("Exception creating new Input/Output Streams for publisher: " + eIO);
+            return false;
+        }
+    } 
+
+    public boolean connectToPlayerSocket(int port) throws Exception{
+        try {
+            playerSocket = new Socket("localhost", port);
+        }
+        catch (Exception e) {
+            System.out.println("Error connecting to Player Socket: " + e);
+            return false;
+        }
+
+        try {
+            playerOut = new PrintWriter(playerSocket.getOutputStream(), true);
+            playerIn = new BufferedReader(new InputStreamReader(playerSocket.getInputStream()));
+        } catch (IOException eIO) {
+            System.out.println("Exception creating new Input/Output Streams for Player: " + eIO);
+            return false;
+        }
     }
 
     public boolean CheckIfCanMakeMove() {
@@ -134,5 +189,35 @@ public abstract class Game {
             }
             System.out.println();
         }
+    }
+
+    public void readPublisher() {
+        String commandJsonString;
+        while (commandJsonString = publisherIn.readline() != null) {
+            Object obj = parser.parse(commandJsonString);
+            JSONObject jsonObject = (JSONObject) obj;
+            String hunterPosition = (String) jsonObject.get("hunter");
+            String preyPosition = (String) jsonObject.get("prey");
+            int time = (Integer) jsonObject.get("time");
+            boolean gameOver = (Boolean) jsonObject.get("gameover");
+
+            JSONArray walls = (JSONArray) jsonObject.get("wall");
+            Iterator<JSONObject> jsonWallIterator = walls.iterator();
+            while (jsonWallIterator.hasNext()) {
+                JSONObject currentWallJsonObject = jsonWallIterator.next();
+                int currentWallLength = (Integer) currentWallJsonObject.get("length");
+                String currentWallPosition = (String) currentWallJsonObject.get("position");
+                String currentWallDirection = (String) currentWallJsonObject.get("direction");
+            }
+        }
+    }
+
+    // Returns String like [1, 2] into point(1, 2)
+    public Point stringToPoint(String inputString) {
+        String allNumbers = inputString.replaceAll("[^0-9]", "");
+        String[] arrayString = inputString.split("[0-9]");
+        int x = Integer.parseInt(arrayString[0]);
+        int y = Integer.parseInt(arrayString[1]);
+        return new Point(x, y);
     }
 }

@@ -1,4 +1,5 @@
 import java.awt.Point;
+import org.json.simple.JSONObject;
 
 public class Hunter {
     public Point currentDirection; 
