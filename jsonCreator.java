@@ -72,8 +72,4 @@ public class jsonCreator {
 		obj.put("wall", walls);
 		return obj;
 	}
-
-
-
-
 }

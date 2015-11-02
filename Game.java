@@ -32,6 +32,7 @@ public abstract class Game {
     JSONParser parser = new JSONParser();
 
     public final int BOARD_SIZE = 301;
+    public boolean gameOver = false;
 
     public Game(int N, int M) {
         this.N = N;
@@ -52,6 +53,50 @@ public abstract class Game {
 
         grid[0][0] = -2;
         grid[230][200] = -3;
+    }
+
+    public void startGame() {
+        JSONObject decisionJSONObject;
+        while(!gameOver) {
+            decisionJSONObject = MakeDecision();
+            SendDecision(decisionJSONObject);
+            readPublisher(); 
+        }
+    }
+
+    public void sendDecision(JSONObject decision) {
+        playerOut.println(decision.toJSONString());
+    }
+
+
+    public void writeToPlayerServer(
+    public updateGame(Point hunterPoint, Point preyPoint, ArrayList<Wall> walls, 
+            int serverTime, boolean gameOver) {
+
+        // Update Time
+        int timeDifference = Math.abs(serverTime - this.time);
+        this.time = serverTime;
+        this.timeSinceLastMove -= timeDifference;
+
+        this.gameOver = gameOver;
+        
+        //Update Grid
+        resetGrid();
+        this.walls = walls;
+        for (wall : walls) {
+            updateGridWithWall(wall, true);
+        }
+    }
+
+    public void resetGrid() {
+        for (int x = 0; x < BOARD_SIZE; x++) {
+           for (int y = 0; y < BOARD_SIZE; y++) {
+              grid[x][y] = -1; 
+           }
+        }
+    
+        grid[hunterPoint.x][hunterPoint.y] = -2;
+        grid[preyPoint.x][preyPoint.y] = -3;
     }
 
     public boolean connectToSockets(int port) throws Exception {
@@ -100,10 +145,12 @@ public abstract class Game {
     }
 
     // Call at start of turn
+    /*
     public void updateTime() {
         time += 1;
         timeSinceLastMove += 1;
     }
+    */
 
     public boolean canBuildWall() {
         return walls.size() < M;
@@ -123,6 +170,8 @@ public abstract class Game {
         }
     }
 
+    /*
+     * Dont ever need to call, we update walls when we need
     public void deleteWall(Wall currentWall) {
         if (!canDeleteWall()) {
             System.out.println("Error, we dont have any walls to delete");
@@ -132,6 +181,7 @@ public abstract class Game {
             updateGridWithWall(currentWall, false);
         }
     }
+    */
 
     public void updateGridWithWall(Wall wall, boolean add) {
         int startX = wall.start.x;
@@ -193,21 +243,40 @@ public abstract class Game {
 
     public void readPublisher() {
         String commandJsonString;
-        while (commandJsonString = publisherIn.readline() != null) {
-            Object obj = parser.parse(commandJsonString);
-            JSONObject jsonObject = (JSONObject) obj;
-            String hunterPosition = (String) jsonObject.get("hunter");
-            String preyPosition = (String) jsonObject.get("prey");
-            int time = (Integer) jsonObject.get("time");
-            boolean gameOver = (Boolean) jsonObject.get("gameover");
+        while (true) {
+            while (commandJsonString = publisherIn.readline() != null) {
+                Object obj = parser.parse(commandJsonString);
+                JSONObject jsonObject = (JSONObject) obj;
 
-            JSONArray walls = (JSONArray) jsonObject.get("wall");
-            Iterator<JSONObject> jsonWallIterator = walls.iterator();
-            while (jsonWallIterator.hasNext()) {
-                JSONObject currentWallJsonObject = jsonWallIterator.next();
-                int currentWallLength = (Integer) currentWallJsonObject.get("length");
-                String currentWallPosition = (String) currentWallJsonObject.get("position");
-                String currentWallDirection = (String) currentWallJsonObject.get("direction");
+                String hunterPosition = (String) jsonObject.get("hunter");
+                Point hunterPoint = stringToPoint(hunterPosition);
+                String preyPosition = (String) jsonObject.get("prey");
+                Point preyPoint = stringToPoint(preyPosition);
+
+                int time = (Integer) jsonObject.get("time");
+                boolean gameOver = (Boolean) jsonObject.get("gameover");
+
+                JSONArray walls = (JSONArray) jsonObject.get("wall");
+                Iterator<JSONObject> jsonWallIterator = walls.iterator();
+                ArrayList<Wall> readInWalls = new ArrayList<Wall>();
+                int wallID = 0;
+                while (jsonWallIterator.hasNext()) {
+                    JSONObject currentWallJsonObject = jsonWallIterator.next();
+                    int currentWallLength = (Integer) currentWallJsonObject.get("length");
+
+                    String currentWallPosition = (String) currentWallJsonObject.get("position");
+                    Point wallStart = stringToPoint(currentWallPosition);
+
+                    String currentWallDirection = (String) currentWallJsonObject.get("direction");
+                    Point wallDirection = severDirectionToPoint(currentWallDirection);
+
+                    Wall tempWall = new Wall(wallDirection, wallStart, currentWallLength,
+                            wallID);
+                    readInWalls.add(tempWall);
+                    wallID += 1;
+                }
+                updateGame(hunterPoint, preyPoint, readInWalls, time, gameOver);
+                return;
             }
         }
     }
@@ -219,5 +288,30 @@ public abstract class Game {
         int x = Integer.parseInt(arrayString[0]);
         int y = Integer.parseInt(arrayString[1]);
         return new Point(x, y);
+    }
+
+    public Point serverDirectionToPoint(String inputString) {
+        switch(inputString) {
+            Point shouldNeverReturnThisPoint = new Point(0, 0);
+            case "E":
+                return new Point(1, 0);
+            case "W":
+                return new Point(-1, 0);
+            case "N":
+                return new Point(0, 1);
+            case "S":
+                return new Point(0, -1);
+            case "NE":
+                return new Point(1, 1);
+            case "NW":
+                return new Point(1, -1);
+            case "SE":
+                return new Point(-1, 1);
+            case "SW":
+                return new Point(-1, 1);
+            default:
+                throw new IllegalArgumentException("Invalid Direction: " + inputString);
+        }
+        return shouldNeverReturnThisPoint;
     }
 }
