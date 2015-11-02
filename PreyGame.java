@@ -25,13 +25,13 @@ public class PreyGame extends Game {
              preyLocation.distance(hunterLocation) <= 6) {
 
             if (hunterDirection.x * hunterDirection.y > 0) {
-                if (preyLocation.y > hunterDirection.y) {
+                if (preyLocation.y > hunterLocation.y + hunterLocation.x) {
                     direction = new Point(-1, 1);
                 } else {
                     direction = new Point(1, -1);
                 }
             } else {
-                if (preyLocation.y > hunterDirection.y) {
+                if (preyLocation.y > hunterLocation.y + hunterLocation.x) {
                     direction = new Point(1, 1);
                 } else {
                     direction = new Point(-1, -1);
