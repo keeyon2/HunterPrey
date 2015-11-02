@@ -4,7 +4,7 @@ public class Prey {
     public Point currentDirection; 
     public Point location;
 
-    public Prey() {
+    public Prey() throws Exception {
         this.location = new Point(230, 200);
         this.currentDirection = new Point(0, 0);
     }

@@ -1,8 +1,12 @@
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.awt.Point;
 import java.net.Socket;
 import java.io.*;
 import org.json.simple.JSONObject;
+import org.json.simple.JSONArray;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 public abstract class Game {
  
@@ -34,7 +38,7 @@ public abstract class Game {
     public final int BOARD_SIZE = 301;
     public boolean gameOver = false;
 
-    public Game(int N, int M) {
+    public Game(int N, int M) throws Exception {
         this.N = N;
         this.M = M;
         this.time = 0;
@@ -55,13 +59,16 @@ public abstract class Game {
         grid[230][200] = -3;
     }
 
-    public void startGame() {
+    public void startGame () throws Exception {
         JSONObject decisionJSONObject;
         while(!gameOver) {
             System.out.println("Start of new turn");
             decisionJSONObject = MakeDecision();
-            SendDecision(decisionJSONObject);
+            System.out.println("Made Decision");
+            sendDecision(decisionJSONObject);
+            System.out.println("Sent Decision");
             readPublisher(); 
+            System.out.println("We have updated our game");
         }
     }
 
@@ -69,9 +76,7 @@ public abstract class Game {
         playerOut.println(decision.toJSONString());
     }
 
-
-    public void writeToPlayerServer(
-    public updateGame(Point hunterPoint, Point preyPoint, ArrayList<Wall> walls, 
+    public void updateGame(Point hunterPoint, Point preyPoint, ArrayList<Wall> walls, 
             int serverTime, boolean gameOver) {
 
         // Update Time
@@ -83,8 +88,11 @@ public abstract class Game {
         
         //Update Grid
         resetGrid();
+        grid[hunterPoint.x][hunterPoint.y] = -2;
+        grid[preyPoint.x][preyPoint.y] = -3;
+
         this.walls = walls;
-        for (wall : walls) {
+        for (Wall wall : walls) {
             updateGridWithWall(wall, true);
         }
     }
@@ -95,14 +103,15 @@ public abstract class Game {
               grid[x][y] = -1; 
            }
         }
-    
-        grid[hunterPoint.x][hunterPoint.y] = -2;
-        grid[preyPoint.x][preyPoint.y] = -3;
     }
 
     public boolean connectToSockets(int port) throws Exception {
-        connectToPublisherSocket();
-        connectToPlayerSocket(port);
+        boolean publisherConnectionWorked = false;
+        boolean playerConnectionWorked = false;
+        publisherConnectionWorked = connectToPublisherSocket();
+        playerConnectionWorked = connectToPlayerSocket(port);
+        return (publisherConnectionWorked && playerConnectionWorked); 
+
     }
 
     public boolean connectToPublisherSocket() throws Exception{
@@ -121,6 +130,7 @@ public abstract class Game {
             System.out.println("Exception creating new Input/Output Streams for publisher: " + eIO);
             return false;
         }
+        return true;
     } 
 
     public boolean connectToPlayerSocket(int port) throws Exception{
@@ -139,6 +149,7 @@ public abstract class Game {
             System.out.println("Exception creating new Input/Output Streams for Player: " + eIO);
             return false;
         }
+        return true;
     }
 
     public boolean CheckIfCanMakeMove() {
@@ -242,10 +253,13 @@ public abstract class Game {
         }
     }
 
-    public void readPublisher() {
+    public void readPublisher() throws Exception{
         String commandJsonString;
         while (true) {
-            while (commandJsonString = publisherIn.readline() != null) {
+            System.out.println("We are waiting for the server");
+            System.out.println((commandJsonString = publisherIn.readLine()) == null);
+            while ((commandJsonString = publisherIn.readLine()) != null) {
+                System.out.println("We have something from the server");
                 Object obj = parser.parse(commandJsonString);
                 JSONObject jsonObject = (JSONObject) obj;
 
@@ -269,7 +283,7 @@ public abstract class Game {
                     Point wallStart = stringToPoint(currentWallPosition);
 
                     String currentWallDirection = (String) currentWallJsonObject.get("direction");
-                    Point wallDirection = severDirectionToPoint(currentWallDirection);
+                    Point wallDirection = serverDirectionToPoint(currentWallDirection);
 
                     Wall tempWall = new Wall(wallDirection, wallStart, currentWallLength,
                             wallID);
@@ -292,8 +306,8 @@ public abstract class Game {
     }
 
     public Point serverDirectionToPoint(String inputString) {
+        Point shouldNeverReturnThisPoint = new Point(0, 0);
         switch(inputString) {
-            Point shouldNeverReturnThisPoint = new Point(0, 0);
             case "E":
                 return new Point(1, 0);
             case "W":
@@ -313,6 +327,7 @@ public abstract class Game {
             default:
                 throw new IllegalArgumentException("Invalid Direction: " + inputString);
         }
-        return shouldNeverReturnThisPoint;
     }
+
+    public abstract JSONObject MakeDecision();
 }

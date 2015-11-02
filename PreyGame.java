@@ -7,13 +7,14 @@ import java.lang.Override;
 
 public class PreyGame extends Game {
 
-    public PreyGame(int N, int M) {
+    public PreyGame(int N, int M) throws Exception {
         super(N, M);
         connectToSockets(1992);
+        startGame();
     }
 
     @Override
-    JSONObject MakeDecision() {
+    public JSONObject MakeDecision() {
         Point hunterDirection = hunter.currentDirection;
         Point hunterLocation = hunter.location;
         Point preyLocation = prey.location;
@@ -68,6 +69,7 @@ public class PreyGame extends Game {
         } else if (direction.x == 0 && direction.y == -1) {
             return jsonCreator.Moving("S");
         }
+        return jsonCreator.NotMoving();
     }
 
 }
