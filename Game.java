@@ -64,12 +64,34 @@ public abstract class Game {
         while(!gameOver) {
             System.out.println("Start of new turn");
             System.out.println("Time is: " + time);
+            sendPToPlayerServer();
             decisionJSONObject = MakeDecision();
             System.out.println("Made Decision");
+            System.out.println("Decision is: ");
+            System.out.println(decisionJSONObject.toJSONString());
             sendDecision(decisionJSONObject);
             System.out.println("Sent Decision");
             readPublisher(); 
             System.out.println("We have updated our game");
+        }
+    }
+
+    public void sendPToPlayerServer() {
+        JSONObject positions = jsonCreator.GetPositions();
+        playerOut.println(positions.toJSONString());
+        String receivedPositions;
+
+        System.out.println("Sending P to Player Server");
+        System.out.println(positions.toJSONString());
+        try {
+            while ((receivedPositions = playerIn.readLine()) != null) {
+                System.out.println("Received Positions is: ");
+                System.out.println(receivedPositions);
+            }
+            System.out.println("Done Receiving and received: " + receivedPositions);
+        }
+        catch (Exception e) {
+            System.out.println("ERROR: " + e);
         }
     }
 
