@@ -63,6 +63,7 @@ public abstract class Game {
         JSONObject decisionJSONObject;
         while(!gameOver) {
             System.out.println("Start of new turn");
+            System.out.println("Time is: " + time);
             decisionJSONObject = MakeDecision();
             System.out.println("Made Decision");
             sendDecision(decisionJSONObject);
@@ -90,6 +91,9 @@ public abstract class Game {
         resetGrid();
         grid[hunterPoint.x][hunterPoint.y] = -2;
         grid[preyPoint.x][preyPoint.y] = -3;
+        this.hunter.location = hunterPoint;
+        this.prey.location = preyPoint;
+
 
         this.walls = walls;
         for (Wall wall : walls) {
@@ -110,8 +114,9 @@ public abstract class Game {
         boolean playerConnectionWorked = false;
         publisherConnectionWorked = connectToPublisherSocket();
         playerConnectionWorked = connectToPlayerSocket(port);
+        System.out.println("Connected to publisher Socket: " + publisherConnectionWorked);
+        System.out.println("Connected to player Socket: " + playerConnectionWorked);
         return (publisherConnectionWorked && playerConnectionWorked); 
-
     }
 
     public boolean connectToPublisherSocket() throws Exception{
@@ -253,15 +258,21 @@ public abstract class Game {
         }
     }
 
-    public void readPublisher() throws Exception{
+    public void readPublisher() {
         String commandJsonString;
-        while (true) {
-            System.out.println("We are waiting for the server");
-            System.out.println((commandJsonString = publisherIn.readLine()) == null);
+        try {
             while ((commandJsonString = publisherIn.readLine()) != null) {
                 System.out.println("We have something from the server");
-                Object obj = parser.parse(commandJsonString);
-                JSONObject jsonObject = (JSONObject) obj;
+                JSONObject jsonObject = new JSONObject();
+                try {
+                    Object obj = parser.parse(commandJsonString);
+                    jsonObject = (JSONObject) obj;
+                }
+
+                catch (ParseException pe) {
+                    System.out.println("PARSE ERROR");
+                    System.out.println(pe);
+                }
 
                 String hunterPosition = (String) jsonObject.get("hunter");
                 Point hunterPoint = stringToPoint(hunterPosition);
@@ -293,6 +304,10 @@ public abstract class Game {
                 updateGame(hunterPoint, preyPoint, readInWalls, time, gameOver);
                 return;
             }
+            System.out.println("We got nothing");
+        }
+        catch (IOException IOexception) {
+            System.out.println(IOexception);
         }
     }
 

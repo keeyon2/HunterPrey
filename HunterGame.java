@@ -6,7 +6,6 @@ public class HunterGame extends Game {
         super(N, M);
         connectToSockets(1991);
         startGame();
-        System.out.println("Hunter Game");
     } 
 
     @Override
