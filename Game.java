@@ -58,6 +58,7 @@ public abstract class Game {
     public void startGame() {
         JSONObject decisionJSONObject;
         while(!gameOver) {
+            System.out.println("Start of new turn");
             decisionJSONObject = MakeDecision();
             SendDecision(decisionJSONObject);
             readPublisher(); 
