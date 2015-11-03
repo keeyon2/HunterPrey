@@ -2,9 +2,8 @@ import org.json.simple.JSONObject;
 
 public class HunterGame extends Game {
 
-    public HunterGame(int N, int M) throws Exception {
-        super(N, M);
-        connectToSockets(1991);
+    public HunterGame(int N, int M, String playerDest) throws Exception {
+        super(N, M, playerDest);
         startGame();
     } 
 

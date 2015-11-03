@@ -7,9 +7,8 @@ import java.lang.Override;
 
 public class PreyGame extends Game {
 
-    public PreyGame(int N, int M) throws Exception {
-        super(N, M);
-        connectToSockets(1992);
+    public PreyGame(int N, int M, String playerDest) throws Exception {
+        super(N, M, playerDest);
         startGame();
     }
 
