@@ -18,7 +18,7 @@ public class PublisherWebSocket{
 
     @OnWebSocketMessage
     public void onText(Session session, String message) throws IOException {
-        System.out.println("Received Publisher Message");
+        System.out.println("Received Publisher Message: " + message);
         gameWithSocket.ReceivedMessageFromPublisherSocket(message);
     }
 

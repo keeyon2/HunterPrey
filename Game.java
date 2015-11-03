@@ -358,8 +358,9 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
                     JSONObject currentWallJsonObject = jsonWallIterator.next();
                     int currentWallLength = (Integer) currentWallJsonObject.get("length");
 
-                    String currentWallPosition = (String) currentWallJsonObject.get("position");
-                    Point wallStart = stringToPoint(currentWallPosition);
+                    JSONArray currentWallCoordinates = (JSONArray) currentWallJsonObject.
+                        get("position");
+                    Point wallStart = parseJSONArrayCoordinates(currentWallCoordinates);
 
                     String currentWallDirection = (String) currentWallJsonObject.get("direction");
                     Point wallDirection = serverDirectionToPoint(currentWallDirection);
@@ -374,10 +375,11 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
             }
 
             else if (commandValue.equals("P")) {
-                String hunterPosition = (String) jsonObject.get("hunter");
-                Point hunterPoint = stringToPoint(hunterPosition);
-                String preyPosition = (String) jsonObject.get("prey");
-                Point preyPoint = stringToPoint(preyPosition);
+                JSONArray hunterCoordinates = (JSONArray) jsonObject.get("hunter");
+                Point hunterPoint = parseJSONArrayCoordinates(hunterCoordinates);
+
+                JSONArray preyCoordinates = (JSONArray) jsonObject.get("prey");
+                Point preyPoint = parseJSONArrayCoordinates(preyCoordinates);
 
                 updatePositions(hunterPoint, preyPoint);
             }
@@ -414,23 +416,37 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         grid[preyPoint.x][preyPoint.y] = -3;
     }
 
+    public Point parseJSONArrayCoordinates(JSONArray coordinates) {
+        System.out.println("Coordinates are: " + coordinates);
+
+        long x = (Long) coordinates.get(0);
+        long y = (Long) coordinates.get(1);
+        int xi = (int) x;
+        int yi = (int) y;
+        return new Point(xi, yi);
+    }
+
     public void parsePublisherMessage(String message) {
         try {
             JSONObject jsonObject = new JSONObject();
             try {
+                System.out.println("the wrong message is " + message);
                 Object obj = parser.parse(message);
                 jsonObject = (JSONObject) obj;
             }
 
             catch (ParseException pe) {
                 System.out.println("PARSE ERROR");
+                System.out.println("Message is");
+                System.out.println(message);
                 System.out.println(pe);
             }
 
-            String hunterPosition = (String) jsonObject.get("hunter");
-            Point hunterPoint = stringToPoint(hunterPosition);
-            String preyPosition = (String) jsonObject.get("prey");
-            Point preyPoint = stringToPoint(preyPosition);
+            JSONArray hunterCoordinates = (JSONArray) jsonObject.get("hunter");
+            Point hunterPoint = parseJSONArrayCoordinates(hunterCoordinates);
+
+            JSONArray preyCoordinates = (JSONArray) jsonObject.get("prey");
+            Point preyPoint = parseJSONArrayCoordinates(preyCoordinates);
 
             int time = (Integer) jsonObject.get("time");
             boolean gameOver = (Boolean) jsonObject.get("gameover");
@@ -443,8 +459,9 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
                 JSONObject currentWallJsonObject = jsonWallIterator.next();
                 int currentWallLength = (Integer) currentWallJsonObject.get("length");
 
-                String currentWallPosition = (String) currentWallJsonObject.get("position");
-                Point wallStart = stringToPoint(currentWallPosition);
+                JSONArray currentWallCoordinates = (JSONArray) currentWallJsonObject.get(
+                        "position");
+                Point wallStart = parseJSONArrayCoordinates(currentWallCoordinates);
 
                 String currentWallDirection = (String) currentWallJsonObject.get("direction");
                 Point wallDirection = serverDirectionToPoint(currentWallDirection);

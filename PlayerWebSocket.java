@@ -18,7 +18,7 @@ public class PlayerWebSocket{
 
     @OnWebSocketMessage
     public void onText(Session session, String message) throws IOException {
-        System.out.println("Received Player Message");
+        System.out.println("Received Player Message: " + message);
         gameWithSocket.ReceivedMessageFromPlayerSocket(message);
     }
 
@@ -32,7 +32,7 @@ public class PlayerWebSocket{
      
     public void sendMessage(String str) {
         try {
-            System.out.println("We are sending \"" + str + "\" to Player Web Socket");
+            System.out.println("We are sending " + str + " to Player Web Socket");
             session.getRemote().sendString(str);
         } catch (IOException e) {
             // TODO Auto-generated catch block
