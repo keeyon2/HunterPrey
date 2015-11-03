@@ -32,7 +32,7 @@ public class PublisherWebSocket{
      
     public void sendMessage(String str) {
         try {
-            System.out.println("We are sending \"" + str + "\" to Publisher Web Socket");
+            System.out.println("We are sending " + str + " to Publisher Web Socket");
             session.getRemote().sendString(str);
         } catch (IOException e) {
             // TODO Auto-generated catch block

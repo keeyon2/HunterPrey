@@ -62,6 +62,28 @@ public class jsonCreator {
 		return obj;
 	}
 
+    // New Wall Functions
+    public static JSONObject BuildVerticleWall() {
+        JSONObject obj = new JSONObject();
+        JSONObject wallObj = new JSONObject();
+
+        wallObj.put("direction", "V");
+        obj.put("command", "B");
+        obj.put("wall", wallObj);
+        return obj;
+    } 
+
+    // New Wall Functions
+    public static JSONObject BuildHorizontalWall() {
+        JSONObject obj = new JSONObject();
+        JSONObject wallObj = new JSONObject();
+
+        wallObj.put("direction", "H");
+        obj.put("command", "B");
+        obj.put("wall", wallObj);
+        return obj;
+    } 
+
 	//direction can be "N", "S", "NE", etc
 	public static JSONObject BuildWalls(String direction, int length) {
 		JSONObject obj = new JSONObject();

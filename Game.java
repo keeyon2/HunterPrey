@@ -344,6 +344,8 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
 
             catch (ParseException pe) {
                 System.out.println("PARSE ERROR");
+                System.out.println("message is");
+                System.out.println(message);
                 System.out.println(pe);
             }
 
@@ -421,8 +423,9 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
 
         long x = (Long) coordinates.get(0);
         long y = (Long) coordinates.get(1);
-        int xi = (int) x;
-        int yi = (int) y;
+
+        int xi = Math.toIntExact(x);
+        int yi = Math.toIntExact(y);
         return new Point(xi, yi);
     }
 
@@ -430,7 +433,6 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         try {
             JSONObject jsonObject = new JSONObject();
             try {
-                System.out.println("the wrong message is " + message);
                 Object obj = parser.parse(message);
                 jsonObject = (JSONObject) obj;
             }
@@ -475,7 +477,7 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         }
 
         catch (Exception e) {
-            System.out.println(e);
+            //System.out.println(e);
         }
     }
 
