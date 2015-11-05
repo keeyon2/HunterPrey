@@ -2,19 +2,51 @@ import java.util.List;
 
 public class PublisherData {
     private List<Integer> hunterCoordinates;
+    private String hunterDirection;
     private List<Integer> preyCoordinates;
     private List<WallData> walls;
     private List<ErrorData> errors;
+    private Integer time;
+    private Boolean gameover;
 
     public PublisherData() {
     }
 
-    public PublisherData(List<Integer> hunterCoords, List<Integer> preyCoords, 
-            List<WallData> walls, List<ErrorData> errors) {
+    public PublisherData(List<Integer> hunterCoords, String hunterDirection, 
+            List<Integer> preyCoords, List<WallData> walls, 
+            List<ErrorData> errors, Integer time, Boolean gameover) {
+
         this.hunterCoordinates = hunterCoords;
+        this.hunterDirection = hunterDirection;
         this.preyCoordinates = preyCoords;
         this.walls = walls;
         this.errors = errors;
+        this.time = time;
+        this.gameover = gameover;
+    }
+
+    public Integer getTime() {
+        return this.time;
+    }
+
+    public void setTime(Integer time) {
+        this.time = time;
+    }
+
+    public Boolean getGameover() {
+        return this.gameover;
+    }
+
+    public void setGameover(Boolean gameover) {
+        this.gameover = gameover;
+    }
+
+    public String getHunterDirection() {
+        return this.hunterDirection;
+    }
+
+    public void setHunterDirection(String direction) {
+        this.hunterDirection = direction;
     }
 
     public List<Integer> getHunterCoordinates() {

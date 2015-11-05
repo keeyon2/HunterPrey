@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Iterator;
 import java.awt.Point;
 import java.lang.Object;
@@ -18,6 +19,9 @@ import java.net.URI;
  
 import org.eclipse.jetty.websocket.client.ClientUpgradeRequest;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSocket {
  
@@ -91,12 +95,45 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
     public void ReceivedMessageFromPlayerSocket(String message) {
         //Received message from Player
         parsePlayerMessage(message);
+        //parsePlayerMessageGSON(message);
     }  
+
+    public void checkGameOver() {
+        if (gameOver) {
+            System.out.println("Game is now over");
+
+            try {
+                System.out.println("Stopping Servers");
+                publClient.stop();
+                playerClient.stop();
+                connectedToPublisher = false;
+                connectedToPlayer= false;
+            }
+
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            try {
+                Thread.sleep(1000);
+            }
+
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            System.exit(0);
+        }
+    }
 
     public void ReceivedMessageFromPublisherSocket(String message) {
         parsePublisherMessage(message);
-        okToMakeMove = true;
+        checkGameOver();
+        playerMakeMove();
+
+        //parsePublisherMessageGSON(message);
     }
+    
 
     public void ConnectionMadeWithPlayerSocket() {
         this.connectedToPlayer = true;
@@ -106,41 +143,89 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         this.connectedToPublisher = true;
     }
 
-    public void startGame () throws Exception {
+    public void waitForConnections() {
+        boolean notConnected = true;
+        while(notConnected) {
+            if (this.connectedToPublisher && this.connectedToPlayer) {
+                notConnected = false;
+            }
+            else {
+                notConnected = true;
+                try {
+                    Thread.sleep(500);
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
+                } 
+            }
+        }
+    }
+
+    public Boolean canMakeMove() {
+        if (this instanceof HunterGame) {
+            return this.okToMakeMove;
+        }
+
+        else if (this instanceof PreyGame) {
+            boolean isEvenTime = (this.time % 2 == 0);
+            if (this.time == 1) {
+                if (this.hunter.location.x == 0 && this.hunter.location.y == 0) {
+                    return this.okToMakeMove;
+                }
+            }
+            return this.okToMakeMove && isEvenTime;
+        }
+
+        System.out.println("We do not know the type of this game, error");
+        return false;
+    }
+
+    public void startGame() {
+        waitForConnections();
         JSONObject decisionJSONObject;
-        while(!gameOver) {
-            System.out.println("Doing work");
-            if (connectedToPublisher && connectedToPlayer && okToMakeMove) {
-                System.out.println("Start of new turn");
-                System.out.println("Time is: " + time);
-                sendPToPlayerServer();
-                decisionJSONObject = MakeDecision();
-                System.out.println("Made Decision");
-                System.out.println("Decision is: ");
-                System.out.println(decisionJSONObject.toJSONString());
-                sendDecision(decisionJSONObject);
-                okToMakeMove = false;
-                
-                // Keep this here
-                // Waiting for server Response
-                while (!okToMakeMove) {
-                    // okToMakeMove is updated to true
-                    // Whenever the publisher socket 
-                    // returns to us the end up a move
+
+        if (this instanceof HunterGame) {
+            decisionJSONObject = MakeDecision();
+            sendDecision(decisionJSONObject);
+        }
+
+        else {
+            if (this.time == 0) {
+                sendPToPlayerServer(); 
+
+                try {
+                    Thread.sleep(500);
+                }
+                catch (Exception e) {
+                    System.out.println(e);
+                }
+
+                int hunterX = this.hunter.location.x;
+                int hunterY = this.hunter.location.y;
+
+                boolean hunterHasMoved = (hunterX != 0 || hunterY != 0);
+
+                if (hunterHasMoved) {
+                    decisionJSONObject = MakeDecision();
+                    sendDecision(decisionJSONObject);
                 }
             }
         }
+    } 
 
-        try {
-            System.out.println("Stopping Servers");
-            publClient.stop();
-            playerClient.stop();
-            connectedToPublisher = false;
-            connectedToPlayer= false;
+    public void playerMakeMove() {
+        JSONObject decisionJSONObject;
+
+        if (this instanceof HunterGame) {
+            decisionJSONObject = MakeDecision();
+            sendDecision(decisionJSONObject);
         }
 
-        catch (Exception e) {
-            e.printStackTrace();
+        else {
+            if (this.time % 2 == 1) {
+                decisionJSONObject = MakeDecision();
+                sendDecision(decisionJSONObject);
+            }
         }
     }
 
@@ -153,8 +238,8 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         playerSocket.sendMessage(decision.toJSONString());
     }
 
-    public void updateGame(Point hunterPoint, Point preyPoint, ArrayList<Wall> walls, 
-            int serverTime, boolean gameOver) {
+    public void updateGame(Point hunterPoint, Point preyPoint, Point hunterDir,
+            ArrayList<Wall> walls, int serverTime, boolean gameOver) {
 
         // Update Time
         int timeDifference = Math.abs(serverTime - this.time);
@@ -165,7 +250,7 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         
         //Update Grid
         resetGrid();
-        updatePositions(hunterPoint, preyPoint);
+        updatePositions(hunterPoint, hunterDir, preyPoint);
 
         updateWalls(walls);
         System.out.println("Game updated from Publisher");
@@ -179,69 +264,10 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         }
     }
 
-    /*
-    public boolean connectToSockets(int port) throws Exception {
-        boolean publisherConnectionWorked = false;
-        boolean playerConnectionWorked = false;
-        publisherConnectionWorked = connectToPublisherSocket();
-        playerConnectionWorked = connectToPlayerSocket(port);
-        System.out.println("Connected to publisher Socket: " + publisherConnectionWorked);
-        System.out.println("Connected to player Socket: " + playerConnectionWorked);
-        return (publisherConnectionWorked && playerConnectionWorked); 
-    }
-    */
-
-    /*
-    public boolean connectToPublisherSocket() throws Exception{
-        try {
-            publisherSocket = new Socket("localhost", 1990);
-        }
-        catch (Exception e) {
-            System.out.println("Error connecting to Publisher Socket: " + e);
-            return false;
-        }
-
-        try {
-            publisherOut = new PrintWriter(publisherSocket.getOutputStream(), true);
-            publisherIn = new BufferedReader(new InputStreamReader(publisherSocket.getInputStream()));
-        } catch (IOException eIO) {
-            System.out.println("Exception creating new Input/Output Streams for publisher: " + eIO);
-            return false;
-        }
-        return true;
-    } 
-
-    public boolean connectToPlayerSocket(int port) throws Exception{
-        try {
-            playerSocket = new Socket("localhost", port);
-        }
-        catch (Exception e) {
-            System.out.println("Error connecting to Player Socket: " + e);
-            return false;
-        }
-
-        try {
-            playerOut = new PrintWriter(playerSocket.getOutputStream(), true);
-            playerIn = new BufferedReader(new InputStreamReader(playerSocket.getInputStream()));
-        } catch (IOException eIO) {
-            System.out.println("Exception creating new Input/Output Streams for Player: " + eIO);
-            return false;
-        }
-        return true;
-    }
-    */
 
     public boolean CheckIfCanMakeMove() {
         return timeSinceLastMove >= N;
     }
-
-    // Call at start of turn
-    /*
-    public void updateTime() {
-        time += 1;
-        timeSinceLastMove += 1;
-    }
-    */
 
     public boolean canBuildWall() {
         return walls.size() < M;
@@ -332,7 +358,7 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         }
     }
 
-    public void parsePlayerMessage(String message) {
+    public synchronized void parsePlayerMessage(String message) {
         System.out.println("Parsing Player Message: ");
         System.out.println(message);
         try {
@@ -343,8 +369,8 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
             }
 
             catch (ParseException pe) {
-                System.out.println("PARSE ERROR");
-                System.out.println("message is");
+                System.out.println("PLAYER PARSE ERROR");
+                System.out.println("player message is");
                 System.out.println(message);
                 System.out.println(pe);
             }
@@ -352,37 +378,23 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
             String commandValue = (String) jsonObject.get("command");
 
             if (commandValue.equals("W")) {
-                JSONArray walls = (JSONArray) jsonObject.get("wall");
-                Iterator<JSONObject> jsonWallIterator = walls.iterator();
-                ArrayList<Wall> readInWalls = new ArrayList<Wall>();
-                int wallID = 0;
-                while (jsonWallIterator.hasNext()) {
-                    JSONObject currentWallJsonObject = jsonWallIterator.next();
-                    int currentWallLength = (Integer) currentWallJsonObject.get("length");
+                System.out.println("Parsing Player W");
+                JSONArray walls = (JSONArray) jsonObject.get("walls");
+                ArrayList<Wall> readInWalls = parseJSONArrayWalls(walls);
 
-                    JSONArray currentWallCoordinates = (JSONArray) currentWallJsonObject.
-                        get("position");
-                    Point wallStart = parseJSONArrayCoordinates(currentWallCoordinates);
-
-                    String currentWallDirection = (String) currentWallJsonObject.get("direction");
-                    Point wallDirection = serverDirectionToPoint(currentWallDirection);
-
-                    Wall tempWall = new Wall(wallDirection, wallStart, currentWallLength,
-                            wallID);
-                    readInWalls.add(tempWall);
-                    wallID += 1;
-                }
-
+                System.out.println("Finished Parsing W");
                 updateWalls(readInWalls);
             }
 
             else if (commandValue.equals("P")) {
+                System.out.println("Parsing Player P");
                 JSONArray hunterCoordinates = (JSONArray) jsonObject.get("hunter");
                 Point hunterPoint = parseJSONArrayCoordinates(hunterCoordinates);
 
                 JSONArray preyCoordinates = (JSONArray) jsonObject.get("prey");
                 Point preyPoint = parseJSONArrayCoordinates(preyCoordinates);
 
+                System.out.println("Finished Parsing P");
                 updatePositions(hunterPoint, preyPoint);
             }
 
@@ -402,6 +414,11 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         }
     }
 
+    public void updatePositions(Point hunterPoint, Point hunterDir, Point preyPoint) {
+        this.hunter.currentDirection = hunterDir;
+        updatePositions(hunterPoint, preyPoint);
+    }
+
     public void updatePositions(Point hunterPoint, Point preyPoint) {
         if (grid[hunter.location.x][hunter.location.y] == -2) {
             grid[hunter.location.x][hunter.location.y] = -1;
@@ -419,8 +436,6 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
     }
 
     public Point parseJSONArrayCoordinates(JSONArray coordinates) {
-        System.out.println("Coordinates are: " + coordinates);
-
         long x = (Long) coordinates.get(0);
         long y = (Long) coordinates.get(1);
 
@@ -429,7 +444,33 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         return new Point(xi, yi);
     }
 
-    public void parsePublisherMessage(String message) {
+    public ArrayList<Wall> parseJSONArrayWalls(JSONArray walls) {
+        ArrayList<Wall> returnWalls = new ArrayList<Wall>();
+        for (int id = 0; id < walls.size(); id++) {
+            JSONObject currentWallJsonObj = (JSONObject) walls.get(id);
+
+            long currentWallLengthL = (Long) currentWallJsonObj.get("length");
+            int currentWallLength = (int) currentWallLengthL;
+
+            JSONArray currentWallCoordinates = (JSONArray) currentWallJsonObj.get(
+                    "position");
+            Point wallStart = parseJSONArrayCoordinates(currentWallCoordinates);
+
+            String currentWallDirection = (String) currentWallJsonObj.get("direction");
+            Point wallDirection = serverDirectionToPoint(currentWallDirection);
+
+            Wall tempWall = new Wall(wallDirection, wallStart, currentWallLength,
+                    id);
+            returnWalls.add(tempWall);
+        }
+
+        return returnWalls;
+    }
+
+    public synchronized void parsePublisherMessage(String message) {
+        System.out.println("Begginning to parse Publisher Message");
+        message.replace("false", "\"false\"");
+        message.replace("true", "\"true\"");
         try {
             JSONObject jsonObject = new JSONObject();
             try {
@@ -450,35 +491,73 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
             JSONArray preyCoordinates = (JSONArray) jsonObject.get("prey");
             Point preyPoint = parseJSONArrayCoordinates(preyCoordinates);
 
-            int time = (Integer) jsonObject.get("time");
+            String huntDirection = (String) jsonObject.get("hunterDir");
+            System.out.println("Mid publ parse hunterDirection is: " + huntDirection);
+            Point hunterDir = serverDirectionToPoint(huntDirection);
+
+            System.out.println("hunterPoint is null: " + (hunterPoint == null));
+
+            long timeL = (Long) jsonObject.get("time");
+            int time = (int) timeL;
+
             boolean gameOver = (Boolean) jsonObject.get("gameover");
 
+            String wallsString = (String) jsonObject.get("wall");
             JSONArray walls = (JSONArray) jsonObject.get("wall");
-            Iterator<JSONObject> jsonWallIterator = walls.iterator();
             ArrayList<Wall> readInWalls = new ArrayList<Wall>();
-            int wallID = 0;
-            while (jsonWallIterator.hasNext()) {
-                JSONObject currentWallJsonObject = jsonWallIterator.next();
-                int currentWallLength = (Integer) currentWallJsonObject.get("length");
-
-                JSONArray currentWallCoordinates = (JSONArray) currentWallJsonObject.get(
-                        "position");
-                Point wallStart = parseJSONArrayCoordinates(currentWallCoordinates);
-
-                String currentWallDirection = (String) currentWallJsonObject.get("direction");
-                Point wallDirection = serverDirectionToPoint(currentWallDirection);
-
-                Wall tempWall = new Wall(wallDirection, wallStart, currentWallLength,
-                        wallID);
-                readInWalls.add(tempWall);
-                wallID += 1;
+            if (walls != null) {
+                readInWalls = parseJSONArrayWalls(walls);
             }
-            updateGame(hunterPoint, preyPoint, readInWalls, time, gameOver);
+
+            System.out.println("Done parsing Publisher message"); 
+            updateGame(hunterPoint, preyPoint, hunterDir , readInWalls, time, gameOver);
+            System.out.println("Done updating game with Publisher message"); 
         }
 
         catch (Exception e) {
             //System.out.println(e);
         }
+    }
+
+    public Point integerListToPoint(List<Integer> points) {
+        Integer x = points.get(0);
+        Integer y = points.get(1);
+        return new Point(x, y);
+    }
+
+    public ArrayList<Wall> wallDataListToWallArrayList(List<WallData> wallsData) {
+        int i = 0;
+        ArrayList<Wall> returnWalls = new ArrayList<Wall>();
+        for (WallData wd : wallsData) {
+            int length = wd.getLength();
+            Point wallDir = serverDirectionToPoint(wd.getDirection());
+            Point wallStart = integerListToPoint(wd.getWallPosition());
+            int id = i;
+            Wall tempWall = new Wall(wallDir, wallStart, length, id);
+            returnWalls.add(tempWall);
+        }
+
+        return returnWalls;
+    }
+
+    public void parsePublisherMessageGSON(String message) {
+        System.out.println("Starting Publisher Message Parse");
+        Gson gson = new Gson();
+        PublisherData publisherDataObj = gson.fromJson(message,
+                PublisherData.class);
+
+        System.out.println(publisherDataObj.getHunterCoordinates());
+
+        Point hunterPoint = integerListToPoint(publisherDataObj.getHunterCoordinates());
+        Point preyPoint = integerListToPoint(publisherDataObj.getPreyCoordinates());
+        Point hunterDir = serverDirectionToPoint(publisherDataObj.getHunterDirection());
+        List<WallData> wallsData = publisherDataObj.getWalls();
+        ArrayList<Wall> readInWalls = wallDataListToWallArrayList(wallsData);
+        int time = publisherDataObj.getTime();
+        boolean gameover = publisherDataObj.getGameover();
+        
+        System.out.println("Finished Publisher Message Parse");
+        updateGame(hunterPoint, preyPoint, hunterDir, readInWalls, time, gameover);
     }
 
     // Returns String like [1, 2] into point(1, 2)
