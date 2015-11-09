@@ -35,7 +35,6 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
     public int N;
     public int M;
     public int time;
-    public int timeSinceLastMove;
     public Hunter hunter;
     public Prey prey;
 
@@ -57,7 +56,6 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         this.N = N;
         this.M = M;
         this.time = 0;
-        this.timeSinceLastMove = N; // Make sure we set to 0 when we make move
         grid = new Integer[301][301];
         walls = new ArrayList<Wall>();
 
@@ -176,7 +174,6 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
             return this.okToMakeMove && isEvenTime;
         }
 
-        System.out.println("We do not know the type of this game, error");
         return false;
     }
 
@@ -244,7 +241,6 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         // Update Time
         int timeDifference = Math.abs(serverTime - this.time);
         this.time = serverTime;
-        this.timeSinceLastMove -= timeDifference;
 
         this.gameOver = gameOver;
         
@@ -253,7 +249,6 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         updatePositions(hunterPoint, hunterDir, preyPoint);
 
         updateWalls(walls);
-        System.out.println("Game updated from Publisher");
     }
 
     public void resetGrid() {
@@ -262,11 +257,6 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
               grid[x][y] = -1; 
            }
         }
-    }
-
-
-    public boolean CheckIfCanMakeMove() {
-        return timeSinceLastMove >= N;
     }
 
     public boolean canBuildWall() {
@@ -359,7 +349,6 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
     }
 
     public synchronized void parsePlayerMessage(String message) {
-        System.out.println("Parsing Player Message: ");
         System.out.println(message);
         try {
             JSONObject jsonObject = new JSONObject();
@@ -378,28 +367,23 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
             String commandValue = (String) jsonObject.get("command");
 
             if (commandValue.equals("W")) {
-                System.out.println("Parsing Player W");
                 JSONArray walls = (JSONArray) jsonObject.get("walls");
                 ArrayList<Wall> readInWalls = parseJSONArrayWalls(walls);
 
-                System.out.println("Finished Parsing W");
                 updateWalls(readInWalls);
             }
 
             else if (commandValue.equals("P")) {
-                System.out.println("Parsing Player P");
                 JSONArray hunterCoordinates = (JSONArray) jsonObject.get("hunter");
                 Point hunterPoint = parseJSONArrayCoordinates(hunterCoordinates);
 
                 JSONArray preyCoordinates = (JSONArray) jsonObject.get("prey");
                 Point preyPoint = parseJSONArrayCoordinates(preyCoordinates);
 
-                System.out.println("Finished Parsing P");
                 updatePositions(hunterPoint, preyPoint);
             }
 
             else {
-                System.out.println("Received player Message with command not P or W");
             }
         }
         catch (Exception e) {
@@ -446,29 +430,31 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
 
     public ArrayList<Wall> parseJSONArrayWalls(JSONArray walls) {
         ArrayList<Wall> returnWalls = new ArrayList<Wall>();
-        for (int id = 0; id < walls.size(); id++) {
-            JSONObject currentWallJsonObj = (JSONObject) walls.get(id);
+        //Update walls count
+        if (walls != null) {
+            for (int id = 0; id < walls.size(); id++) {
+                JSONObject currentWallJsonObj = (JSONObject) walls.get(id);
 
-            long currentWallLengthL = (Long) currentWallJsonObj.get("length");
-            int currentWallLength = (int) currentWallLengthL;
+                long currentWallLengthL = (Long) currentWallJsonObj.get("length");
+                int currentWallLength = (int) currentWallLengthL;
 
-            JSONArray currentWallCoordinates = (JSONArray) currentWallJsonObj.get(
-                    "position");
-            Point wallStart = parseJSONArrayCoordinates(currentWallCoordinates);
+                JSONArray currentWallCoordinates = (JSONArray) currentWallJsonObj.get(
+                        "position");
+                Point wallStart = parseJSONArrayCoordinates(currentWallCoordinates);
 
-            String currentWallDirection = (String) currentWallJsonObj.get("direction");
-            Point wallDirection = serverDirectionToPoint(currentWallDirection);
+                String currentWallDirection = (String) currentWallJsonObj.get("direction");
+                Point wallDirection = serverDirectionToPoint(currentWallDirection);
 
-            Wall tempWall = new Wall(wallDirection, wallStart, currentWallLength,
-                    id);
-            returnWalls.add(tempWall);
+                Wall tempWall = new Wall(wallDirection, wallStart, currentWallLength,
+                        id);
+                returnWalls.add(tempWall);
+            }
         }
 
         return returnWalls;
     }
 
     public synchronized void parsePublisherMessage(String message) {
-        System.out.println("Begginning to parse Publisher Message");
         message.replace("false", "\"false\"");
         message.replace("true", "\"true\"");
         try {
@@ -492,10 +478,8 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
             Point preyPoint = parseJSONArrayCoordinates(preyCoordinates);
 
             String huntDirection = (String) jsonObject.get("hunterDir");
-            System.out.println("Mid publ parse hunterDirection is: " + huntDirection);
             Point hunterDir = serverDirectionToPoint(huntDirection);
 
-            System.out.println("hunterPoint is null: " + (hunterPoint == null));
 
             long timeL = (Long) jsonObject.get("time");
             int time = (int) timeL;
@@ -505,17 +489,13 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
             String wallsString = (String) jsonObject.get("wall");
             JSONArray walls = (JSONArray) jsonObject.get("wall");
             ArrayList<Wall> readInWalls = new ArrayList<Wall>();
-            if (walls != null) {
-                readInWalls = parseJSONArrayWalls(walls);
-            }
+            readInWalls = parseJSONArrayWalls(walls);
 
-            System.out.println("Done parsing Publisher message"); 
             updateGame(hunterPoint, preyPoint, hunterDir , readInWalls, time, gameOver);
-            System.out.println("Done updating game with Publisher message"); 
         }
 
         catch (Exception e) {
-            //System.out.println(e);
+            System.out.println(e);
         }
     }
 
@@ -525,18 +505,20 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         return new Point(x, y);
     }
 
+    /*
     public ArrayList<Wall> wallDataListToWallArrayList(List<WallData> wallsData) {
         int i = 0;
         ArrayList<Wall> returnWalls = new ArrayList<Wall>();
-        for (WallData wd : wallsData) {
-            int length = wd.getLength();
-            Point wallDir = serverDirectionToPoint(wd.getDirection());
-            Point wallStart = integerListToPoint(wd.getWallPosition());
-            int id = i;
-            Wall tempWall = new Wall(wallDir, wallStart, length, id);
-            returnWalls.add(tempWall);
+        if (wallsData != null) {
+            for (WallData wd : wallsData) {
+                int length = wd.getLength();
+                Point wallDir = serverDirectionToPoint(wd.getDirection());
+                Point wallStart = integerListToPoint(wd.getWallPosition());
+                int id = i;
+                Wall tempWall = new Wall(wallDir, wallStart, length, id);
+                returnWalls.add(tempWall);
+            }
         }
-
         return returnWalls;
     }
 
@@ -560,6 +542,8 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         updateGame(hunterPoint, preyPoint, hunterDir, readInWalls, time, gameover);
     }
 
+    */
+
     // Returns String like [1, 2] into point(1, 2)
     public Point stringToPoint(String inputString) {
         String allNumbers = inputString.replaceAll("[^0-9]", "");
@@ -581,11 +565,11 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
             case "S":
                 return new Point(0, -1);
             case "NE":
-                return new Point(1, 1);
-            case "NW":
                 return new Point(1, -1);
+            case "NW":
+                return new Point(-1, -1);
             case "SE":
-                return new Point(-1, 1);
+                return new Point(1, 1);
             case "SW":
                 return new Point(-1, 1);
             default:

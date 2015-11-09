@@ -6,6 +6,18 @@ import org.json.simple.JSONObject;
 
 public class jsonCreator {
 
+//    public static void main(String ... orange) {
+//        JSONObject j = MovingWOBorDWalls();
+//        System.out.println(j);
+//		j = BuildWalls("N", 22);
+//		System.out.println(j);
+//		j = DeleteWalls(20);
+//		System.out.println(j);
+//		j = GetPositions();
+//		System.out.println(j);
+//
+//    }
+
     //for both Hunter and Prey
 	public static JSONObject GetPositions(){
 		JSONObject obj = new JSONObject();
