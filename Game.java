@@ -423,8 +423,8 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
         long x = (Long) coordinates.get(0);
         long y = (Long) coordinates.get(1);
 
-        int xi = Math.toIntExact(x);
-        int yi = Math.toIntExact(y);
+        int xi = (int) x;
+        int yi = (int) y;
         return new Point(xi, yi);
     }
 
