@@ -24,13 +24,13 @@ public class PreyGame extends Game {
              preyLocation.distance(hunterLocation) <= 6) {
 
             if (hunterDirection.x * hunterDirection.y > 0) {
-                if (preyLocation.y > hunterLocation.y + hunterLocation.x) {
+                if (preyLocation.y > hunterLocation.y + (PreLocation.x - hunterLocation.x)) {
                     direction = new Point(-1, 1);
                 } else {
                     direction = new Point(1, -1);
                 }
             } else {
-                if (preyLocation.y > hunterLocation.y + hunterLocation.x) {
+                if (preyLocation.y > hunterLocation.y - (PreyLocation.x - hunterLocation.x)) {
                     direction = new Point(1, 1);
                 } else {
                     direction = new Point(-1, -1);
@@ -54,19 +54,19 @@ public class PreyGame extends Game {
         } else if (direction.x == 1 && direction.y == 0) {
             return jsonCreator.Moving("E");
         } else if (direction.x == 1 && direction.y == 1) {
-            return jsonCreator.Moving("NE");
-        } else if (direction.x == 1 && direction.y == -1) {
             return jsonCreator.Moving("SE");
+        } else if (direction.x == 1 && direction.y == -1) {
+            return jsonCreator.Moving("NE");
         } else if (direction.x == -1 && direction.y == 0) {
             return jsonCreator.Moving("W");
         } else if (direction.x == -1 && direction.y == 1) {
-            return jsonCreator.Moving("NW");
-        } else if (direction.x == -1 && direction.y == -1) {
             return jsonCreator.Moving("SW");
+        } else if (direction.x == -1 && direction.y == -1) {
+            return jsonCreator.Moving("NW");
         } else if (direction.x == 0 && direction.y == 1) {
-            return jsonCreator.Moving("N");
-        } else if (direction.x == 0 && direction.y == -1) {
             return jsonCreator.Moving("S");
+        } else if (direction.x == 0 && direction.y == -1) {
+            return jsonCreator.Moving("N");
         }
         return jsonCreator.NotMoving();
     }
