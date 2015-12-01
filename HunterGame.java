@@ -140,7 +140,7 @@ public class HunterGame extends Game {
             rangeY = Math.abs(hunter.location.y - prey.location.y);
         }
 
-        boolean rangeIsN = (rangeX <= N + 1 || rangeY <= N + 1); 
+        boolean rangeIsN = ((rangeX <= N + 1) || (rangeY <= N + 1)); 
         return rangeIsN;
     }
 

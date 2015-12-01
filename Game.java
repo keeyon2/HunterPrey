@@ -561,9 +561,9 @@ public abstract class Game implements GameWithPublisherSocket, GameWithPlayerSoc
             case "W":
                 return new Point(-1, 0);
             case "N":
-                return new Point(0, 1);
-            case "S":
                 return new Point(0, -1);
+            case "S":
+                return new Point(0, 1);
             case "NE":
                 return new Point(1, -1);
             case "NW":
